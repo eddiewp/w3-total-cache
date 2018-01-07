@@ -7,6 +7,7 @@ Plugin URI: https://github.com/szepeviktor/w3-total-cache-fixed/
 Author: W3TC (Fixed) Community
 Author URI: https://github.com/szepeviktor/w3-total-cache-fixed/
 Network: True
+GitHub Plugin URI: https://github.com/eddiewp/w3-total-cache
 */
 
 /*  Copyright (c) 2009 Frederick Townes <ftownes@w3-edge.com>
