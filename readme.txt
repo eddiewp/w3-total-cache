@@ -2,8 +2,8 @@
 Contributors: fredericktownes
 Tags: seo, cache, caching, compression, maxcdn, nginx, varnish, redis, new relic, aws, amazon web services, s3, cloudfront, rackspace, cloudflare, azure, apache
 Requires at least: 3.2
-Tested up to: 4.8
-Stable tag: 0.9.5.4.3
+Tested up to: 4.9.2
+Stable tag: 0.9.6.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -283,26 +283,32 @@ Please reach out to all of these people and support their projects if you're so 
 
 == Changelog ==
 
-= 0.9.5.4.3 =
-* Fix Undefined property: W3TC\Extension_Amp_Plugin::$is_amp_endpoint
-* Adjusting cdn link in MediaLibrary
-* Add support for X-Forwarded-Proto to identify HTTPS protocol
-* Fix a timeout update that was missed in push CDN upload
-* Write correct data into minify cache file when cache dir is created
-* Make the Google Drive CDN work properly
-* Return correct data from minify file cache when locking is in use
-* Write cache files in binary to prevent corruption of UTF-8 characters
+= 0.9.6 =
+* Fixed anonymous usage tracking, default to disabled
+* Fixed incorrect minify cache data written if target directory missing
+* Fixed empty minify cache file written when file locking enabled
+* Fixed missing commas in CSS (@nigrosimone)
+* Fixed typo in object cache engine (@Furniel)
+* Fixed incorrect reuse of redis connections when persistent connections option enabled
+* Fixed reliability of Google Drive (via jikamens)
+* Fixed handling of UTF-8 encoded files by writing them in binary (via jikamens)
+* Improved Full Site Delivery configuration user flow on the General and CDN settings screens
+* Improved content type matching and cache hits as a result
+* Improved minify file locking logic
+* Improved visual langage of the compatibility test (@Furniel)
+* Improved configuration file management
+* Improved MaxCDN set up wizard
+* Improved page cache's accepted query string handling to handle optional values and add support for disk enhanced mode (via amiga-500, nigrosimone)
+* Improved handling of timeouts to origin push CDN proviers
+* Added HTTP/2 push headers for disk enhanced page caching (via nigrosimone)
+* Added X-Forwarded-Proto header for use cases like HTTPS recognition behind proxies or load balancers
+* Added multiple CDN support i.e. static file objects and pages, posts, feeds, API responses etc to use different respective CDN providers
+* Added page caching by cookie name or value (sponsored by SQweb)
+* Added toggle for CORS header to improve inter-operatbility with various CDN providers
+* Added support for CDN hosted media to media library (inspired by amiga-500)
+* Added object caching of AJAX calls (via andyexeter)
+* Enterprise features are now available to Pro subscribers! Including reading from multiple databases concurrently and purging caches across multiple hosts via a Message Bus
 
-= 0.9.5.4.2 =
-* Colored self test window
-* Fixed Redis DB selection in persistent connection mode
-* Fixed wrong == in ObjectCache_WpObjectCache_Regular.php
-* Missing commas in Generic_Page_Dashboard_View.css
-* Remove uninitialized variable
-* Fix page cache .htaccess for Windows
-
-= 0.9.5.4.1 =
-* Re-sync with the official version
 
 = 0.9.5.4 =
 * Fixed regression with browser caching and query strings

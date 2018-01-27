@@ -676,6 +676,7 @@ class Minify_Page extends Base_Page_Settings {
             }
             $files = $diff;                   
         }
+
 		return $files;
 	}
 }

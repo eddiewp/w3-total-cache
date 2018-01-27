@@ -11,6 +11,7 @@ class CdnEngine_GoogleDrive extends CdnEngine_Base {
 	private $_root_url;
 
 	private $_service;
+	private $_tablename_pathmap;
 
 
 
@@ -27,6 +28,9 @@ class CdnEngine_GoogleDrive extends CdnEngine_Base {
 		$this->_root_folder_id = $config['root_folder_id'];
 		$this->_root_url = rtrim( $config['root_url'], '/' ) . '/';
 		$this->_new_access_token_callback = $config['new_access_token_callback'];
+
+		global $wpdb;
+		$this->_tablename_pathmap = $wpdb->base_prefix . W3TC_CDN_TABLE_PATHMAP;
 
 		try {
 		$this->_init_service( $config['access_token'] );
@@ -97,10 +101,7 @@ class CdnEngine_GoogleDrive extends CdnEngine_Base {
 			if ( $r != 'success' )
 				$result = false;
 			if ( $r == 'timeout' ) {
-				$results = array_merge( $results, $this->_get_results(
-					$files_chunk, W3TC_CDN_RESULT_ERROR,
-					"Upload batch timed out." ));
-				continue;
+				return 'timeout';
 			}
 
 		}
@@ -110,42 +111,44 @@ class CdnEngine_GoogleDrive extends CdnEngine_Base {
 
 
 
-        private function _properties_to_path( $file ) {
-                $path_pieces = array();
-                foreach ( $file->properties as $p ) {
-                        $k = ($p->key == 'path') ? 'path1' : $p->key;
-                        if ( !preg_match( '/^path[0-9]$/', $k ) )
-                                continue;
-                        $path_pieces[$k] = $p->value;
-                }
-                if ( count( $path_pieces ) == 0 )
-                        return NULL;
-                ksort($path_pieces);
-                return join( $path_pieces );
-        }
+	private function _properties_to_path( $file ) {
+		$path_pieces = array();
+		foreach ( $file->properties as $p ) {
+			$k = ($p->key == 'path') ? 'path1' : $p->key;
+			if ( !preg_match( '/^path[0-9]+$/', $k ) )
+					continue;
+			$path_pieces[$k] = $p->value;
+		}
+		if ( count( $path_pieces ) == 0 )
+			return NULL;
+		ksort($path_pieces);
+		return join( $path_pieces );
+	}
 
-        private function _path_to_properties( $path ) {
-                $path_len = strlen( $path );
-                $chunk_size = 62;
-                $max_chunks = 9;
-                $properties = array();
-                $key = 'path';
-                for ($i = 1; $i <= $max_chunks; $i++) {
-                        $start = $chunk_size * ($i - 1);
-                        if ( $start >= $path_len )
-                                break;
-                        if ( $i < $max_chunks )
-                                $len = $chunk_size;
-                        else
-                                $len = $path_len;
-                        $p = new \W3TCG_Google_Service_Drive_Property();
-                        $p->key = $key;
-                        $p->value = substr( $path, $start, $len );
-                        $properties[] = $p;
-                        $key = sprintf('path%d', $i + 1);
-                }
-                return $properties;
-        }
+
+
+	private function _path_to_properties( $path ) {
+		// from google drive api docs:
+		// Maximum of 124 bytes size per property
+		// (including both key and value) string in UTF-8 encoding.
+		// Maximum of 30 private properties per file from any one application.
+		$chunks = str_split( $path, 55 );
+		$properties = array();
+		$i = 1;
+
+		foreach ( $chunks as $chunk ) {
+			$p = new \W3TCG_Google_Service_Drive_Property();
+			$p->key = 'path' . $i;
+			$p->value = $chunk;
+			$properties[] = $p;
+
+			$i++;
+		}
+
+		return $properties;
+	}
+
+
 
 	private function _upload_chunk( $files, &$results, $force_rewrite,
 		$timeout_time, $allow_refresh_token ) {
@@ -156,17 +159,22 @@ class CdnEngine_GoogleDrive extends CdnEngine_Base {
 
 		$files_by_path = array();
 
-                foreach ( $listed_files as $existing_file ) {
-                        $path = $this->_properties_to_path( $existing_file );
-                        if ( $path )
-                                $files_by_path[$path] = $existing_file;
-                }
+		foreach ( $listed_files as $existing_file ) {
+			$path = $this->_properties_to_path( $existing_file );
+			if ( $path ) {
+				$files_by_path[$path] = $existing_file;
+			}
+		}
 
 		// check update date and upload
 		foreach ( $files as $file_descriptor ) {
-                        $remote_path = $file_descriptor['remote_path'];
-			if ( !is_null( $timeout_time ) && time() > $timeout_time )
-				return 'timeout';
+			$remote_path = $file_descriptor['remote_path'];
+
+			// process at least one item before timeout so that progress goes on
+			if ( !empty( $results ) ) {
+				if ( !is_null( $timeout_time ) && time() > $timeout_time )
+					return 'timeout';
+			}
 
 			list( $parent_id, $title ) = $this->remote_path_to_title(
 				$file_descriptor['remote_path'] );
@@ -257,7 +265,7 @@ class CdnEngine_GoogleDrive extends CdnEngine_Base {
 				$results[] = $this->_get_result( $file_descriptor['local_path'],
 					$remote_path, W3TC_CDN_RESULT_OK,
 					'OK', $file_descriptor );
-                                $this->path_set_id( $remote_path, $created_file->id );
+				$this->path_set_id( $remote_path, $created_file->id );
 			} catch ( \W3TCG_Google_Service_Exception $e ) {
 				$errors = $e->getErrors();
 				$details = '';
@@ -522,16 +530,7 @@ class CdnEngine_GoogleDrive extends CdnEngine_Base {
 	 * @return array
 	 */
 	function get_domains() {
-                $server_name = $_SERVER['SERVER_NAME'];
-                $port = $_SERVER['SERVER_PORT'];
-                if ( Util_Environment::is_https() ) {
-                        if ( $port != 443 ) {
-                                $server_name .= ':' . $port;
-                        }
-                } elseif ( $port != 80 ) {
-                        $server_name .= ':' . $port;
-                }
-                return array( $server_name );
+		return array();
 	}
 
 
@@ -546,66 +545,77 @@ class CdnEngine_GoogleDrive extends CdnEngine_Base {
 	}
 
 
-        function purge_all( &$results ) {
-                global $wpdb;
-                $table = $wpdb->base_prefix . W3TC_CDN_TABLE_GOOGLE_DRIVE;
-                $sql = $wpdb->query("DELETE FROM $table;");
-                if ( ( $error = $qpdb->last_error ) ) {
-                        $results = $this->_get_results( array(), W3TC_CDN_RESULT_HALT, $error );
-                        return false;
-                }
-                return true;
-        }
 
-        private function path_set_id( $path, $id ) {
-                global $wpdb;
-                $table = $wpdb->base_prefix . W3TC_CDN_TABLE_GOOGLE_DRIVE;
-                if ( !$id ) {
-                        $sql = "INSERT INTO $table (remote_path, id) VALUES (%s, NULL) ".
-                               "ON DUPLICATE KEY UPDATE id=NULL";
-                        $wpdb->query( $wpdb->prepare( $sql, $path ) );
-                } else {
-                        $sql = "INSERT INTO $table (remote_path, id) VALUES (%s, %s) ".
-                               "ON DUPLICATE KEY UPDATE id=%s";
-                        $wpdb->query( $wpdb->prepare( $sql, $path, $id, $id ) );
-                }
-        }
+	function purge_all( &$results ) {
+		return false;
+	}
 
-        private function path_get_id( $path, $allow_refresh_token = true ) {
-                global $wpdb;
-                $table = $wpdb->base_prefix . W3TC_CDN_TABLE_GOOGLE_DRIVE;
-                $sql = "SELECT id FROM $table WHERE remote_path=%s";
-                $query = $wpdb->prepare($sql, $path);
-                $results = $wpdb->get_results($query);
-                if ( count($results) > 0 )
-                        return $results[0]->id;
-                $props = $this->_path_to_properties( $path );
-                $q = 'trashed = false';
-                foreach ($props as $prop) {
-                        $key = $prop->key;
-                        $value = str_replace( "'", "\\'", $prop->value );
-                        $q .= " and properties has { key='$key' and " .
-                              " value='$value' and visibility='PRIVATE' }";
-                }
-                try {
-                        $items = $this->_service->files->listFiles(
-                                 array( 'q' => $q ) );
-                } catch ( \W3TCG_Google_Auth_Exception $e ) {
-                        if ( $allow_refresh_token ) {
-                                $this->_refresh_token();
-                                return $this->path_get_id( $path, false );
-                        }
-                        throw $e;
-                }
-                $id = (count( $items ) == 0) ? NULL : $items[0]->id;
-                $this->path_set_id( $path, $id );
-                return $id;
-        }
+
+
+	private function path_set_id( $path, $id ) {
+		global $wpdb;
+		$md5 = md5( $path );
+		if ( !$id ) {
+			$sql = "
+				INSERT INTO $this->_tablename_pathmap (path, path_hash, remote_id)
+				VALUES (%s, %s, NULL)
+				ON DUPLICATE KEY UPDATE remote_id = NULL";
+			$wpdb->query($wpdb->prepare($sql, $path, $md5));
+		} else {
+			$sql = "
+				INSERT INTO $this->_tablename_pathmap (path, path_hash, remote_id)
+				VALUES (%s, %s, %s)
+				ON DUPLICATE KEY UPDATE remote_id = %s";
+			$wpdb->query($wpdb->prepare(
+				$sql, $path, $md5, $id, $id));
+		}
+	}
+
+
+
+	private function path_get_id( $path, $allow_refresh_token = true ) {
+		global $wpdb;
+		$md5 = md5($path);
+		$sql = "SELECT remote_id FROM $this->_tablename_pathmap WHERE path_hash = %s";
+		$query = $wpdb->prepare( $sql, $md5 );
+		$results = $wpdb->get_results( $query );
+		if ( count( $results ) > 0 ) {
+			return $results[0]->remote_id;
+		}
+		$props = $this->_path_to_properties( $path );
+		$q = 'trashed = false';
+		foreach ( $props as $prop ) {
+				$key = $prop->key;
+				$value = str_replace( "'", "\\'", $prop->value );
+				$q .= " and properties has { key='$key' and " .
+					  " value='$value' and visibility='PRIVATE' }";
+		}
+
+		try {
+			$items = $this->_service->files->listFiles(
+				array( 'q' => $q ) );
+		} catch ( \W3TCG_Google_Auth_Exception $e ) {
+			if ( $allow_refresh_token ) {
+				$this->_refresh_token();
+				return $this->path_get_id( $path, false );
+			}
+
+			throw $e;
+		}
+
+		$id = ( count( $items ) == 0 ) ? NULL : $items[0]->id;
+		$this->path_set_id( $path, $id );
+
+		return $id;
+	}
+
+
 
 	function format_url( $path, $allow_refresh_token = true ) {
-                $id = $this->path_get_id( Util_Environment::remove_query ( $path ) );
-                if ( is_null( $id ) )
-                        return NULL;
-                return 'https://drive.google.com/uc?id=' . $id;
+		$id = $this->path_get_id( Util_Environment::remove_query( $path ) );
+		if ( is_null( $id ) )
+			return NULL;
+
+		return 'https://drive.google.com/uc?id=' . $id;
 	}
 }

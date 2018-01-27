@@ -93,10 +93,11 @@ class CdnEngine_Azure extends CdnEngine_Base {
 			$remote_path = $file['remote_path'];
 			$local_path = $file['local_path'];
 
-			if ( !is_null( $timeout_time ) && time() > $timeout_time ) {
-				$results[] = $this->_get_result( $local_path, $remote_path,
-					W3TC_CDN_RESULT_ERROR, "Upload batch timed out.", $file );
-				continue;
+			// process at least one item before timeout so that progress goes on
+			if ( !empty( $results ) ) {
+				if ( !is_null( $timeout_time ) && time() > $timeout_time ) {
+					return 'timeout';
+				}
 			}
 
 			$results[] = $this->_upload( $file, $force_rewrite );

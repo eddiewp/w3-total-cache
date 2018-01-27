@@ -152,7 +152,8 @@ class Minify_Cache_File {
 					@flock($fp, LOCK_UN);
 					@fclose($fp);
 
-					return array('content' => $ret);
+					$data['content'] = $ret;
+					return $data;
 				}
 			} else {
 				$data['content'] = @file_get_contents($path);

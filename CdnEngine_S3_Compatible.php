@@ -33,8 +33,7 @@ class CdnEngine_S3_Compatible extends CdnEngine_Base {
 
 		$this->_s3 = new \S3( $config['key'], $config['secret'], false,
 			$config['api_host'] );
-
-        $this->_s3->setSignatureVersion( 'v2' );
+		$this->_s3->setSignatureVersion( 'v2' );
 
 		parent::__construct( $config );
 	}
@@ -75,13 +74,14 @@ class CdnEngine_S3_Compatible extends CdnEngine_Base {
 		$error = null;
 
 		foreach ( $files as $file ) {
-			$remote_path = $file['remote_path'];
 			$local_path = $file['local_path'];
+			$remote_path = $file['remote_path'];
 
-			if ( !is_null( $timeout_time ) && time() > $timeout_time ) {
-				$results[] = $this->_get_result( $local_path, $remote_path,
-					W3TC_CDN_RESULT_ERROR, "Upload batch timed out.", $file );
-				continue;
+			// process at least one item before timeout so that progress goes on
+			if ( !empty( $results ) ) {
+				if ( !is_null( $timeout_time ) && time() > $timeout_time ) {
+					return 'timeout';
+				}
 			}
 
 			$results[] = $this->_upload( $file, $force_rewrite );

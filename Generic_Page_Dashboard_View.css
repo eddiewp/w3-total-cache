@@ -94,13 +94,6 @@
     background: url("pub/img/w3tc_google-logo.png") 0 3px no-repeat;
 }
 
-.w3tc-widget-netdna-logo {
-    float: left;
-    width: 150px;
-    height: 35px;
-    background: url("pub/img/w3tc_netdna-logo.png") 0 5px no-repeat;
-}
-
 .w3tc-widget-maxcdn-logo {
     width: 150px;
     height: 35px;
@@ -186,14 +179,6 @@ only screen and (                min-resolution: 2dppx)  {
         height: 90px;
         background-image: url("pub/img/w3tc_netdna-logo-retina.png");
         background-size: 177px 90px;
-    }
-
-    .w3tc-widget-maxcdn-logo{
-        float: left;
-        width: 180px;
-        height: 90px;
-        background-image: url("pub/img/w3tc_maxcdn-logo-retina.png");
-        background-size: 468px 90px;
     }
 }
 */
